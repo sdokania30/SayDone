@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function FilterBar({ onFilterChange, onSearchChange, activeFilter, sortOrder, onSortChange }) {
+export default function FilterBar({ onFilterChange, onSearchChange, activeFilter, showCompleted, onToggleCompleted }) {
     // Filters: All, Work, Home, High Priority
     const filters = ['All', 'Work', 'Home', 'Urgent'];
 
@@ -23,7 +23,7 @@ export default function FilterBar({ onFilterChange, onSearchChange, activeFilter
                 }}
             />
 
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', flexWrap: 'wrap' }}>
                 {filters.map(filter => (
                     <button
                         key={filter}
@@ -38,12 +38,25 @@ export default function FilterBar({ onFilterChange, onSearchChange, activeFilter
                             background: activeFilter === filter ? 'var(--color-primary)' : 'var(--color-bg-soft)',
                             color: activeFilter === filter ? 'white' : 'var(--color-text-muted)',
                             whiteSpace: 'nowrap',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            minHeight: '32px',
+                            minWidth: 'auto'
                         }}
                     >
                         {filter}
                     </button>
                 ))}
+
+                <button
+                    onClick={onToggleCompleted}
+                    className={`toggle-btn ${showCompleted ? 'active' : ''}`}
+                    style={{
+                        marginLeft: 'auto',
+                        minWidth: 'auto'
+                    }}
+                >
+                    {showCompleted ? '✓ Completed' : 'Show Done'}
+                </button>
             </div>
         </div>
     );

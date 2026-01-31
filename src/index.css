@@ -41,10 +41,10 @@ body {
 
 /* Utilities */
 .container {
-  max-width: 480px;
-  /* Mobile width */
+  max-width: 390px;
+  /* iPhone 13 width */
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px;
   min-height: 100vh;
   background: white;
   position: relative;
@@ -76,10 +76,10 @@ body {
 
 .card {
   background: var(--card-bg);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   box-shadow: var(--card-shadow);
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
   border: 1px solid rgba(0, 0, 0, 0.02);
 }
 
@@ -98,4 +98,59 @@ body {
 
 .animate-enter {
   animation: slideUp 0.3s ease-out forwards;
+}
+
+/* Priority Badges */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.priority-high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.priority-medium {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.priority-low {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+/* Toggle Button */
+.toggle-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--color-bg-soft);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-height: 32px;
+}
+
+.toggle-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* Ensure minimum touch targets (44x44px iOS guidelines) */
+button {
+  min-height: 44px;
+  min-width: 44px;
 }
