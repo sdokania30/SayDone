@@ -247,8 +247,22 @@ function App() {
   return (
     <div className="container" style={{ paddingBottom: '140px' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 className="title" style={{ margin: 0, fontSize: '1.6rem' }}>
-          SayDone 🎙️ <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: '600' }}>({openTaskCount})</span>
+        <h1 className="title" style={{ margin: 0, fontSize: '1.6rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{
+            fontSize: '2rem',
+            background: 'linear-gradient(135deg, #9333ea 0%, #3b82f6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>✓</span>
+          <span style={{
+            background: 'linear-gradient(135deg, #9333ea 0%, #3b82f6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontWeight: '700'
+          }}>SayDone</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: '600' }}>({openTaskCount})</span>
         </h1>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
