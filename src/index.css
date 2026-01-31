@@ -1,0 +1,101 @@
+:root {
+  /* Palette inspired by 'Ahead' - Soft pastels, Violet primary */
+  --color-primary: #8b5cf6;
+  /* Violet-500 */
+  --color-primary-dark: #7c3aed;
+  --color-primary-light: #ddd6fe;
+
+  --color-bg: #fdfdfd;
+  --color-bg-soft: #f3f4f6;
+
+  --color-text-main: #1f2937;
+  --color-text-muted: #6b7280;
+
+  --card-bg: #ffffff;
+  --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+
+  --font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+
+  /* Category Colors */
+  --color-work: #e0f2fe;
+  /* Light Blue */
+  --text-work: #0369a1;
+
+  --color-home: #fce7f3;
+  /* Pink (repurposed from Personal) */
+  --text-home: #be185d;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Utilities */
+.container {
+  max-width: 480px;
+  /* Mobile width */
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  background: white;
+  position: relative;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
+}
+
+.btn {
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-enter {
+  animation: slideUp 0.3s ease-out forwards;
+}
