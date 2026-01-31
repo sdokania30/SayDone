@@ -10,8 +10,9 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('priority'); // 'priority' or 'date'
   const [showCompleted, setShowCompleted] = useState(false);
+  const [selectedTasks, setSelectedTasks] = useState(new Set());
 
   // Collapsible sections state - persisted in localStorage
   const [collapsedSections, setCollapsedSections] = useState(() => {
@@ -54,29 +55,82 @@ function App() {
     setEditForm({});
   };
 
-  // Derived state
+  // Check if task is overdue
+  const isOverdue = (dueDateStr) => {
+    if (!dueDateStr || dueDateStr === 'Not specified') return false;
+
+    // Parse DD-MMM format to Date
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const parts = dueDateStr.split('-');
+    if (parts.length === 2) {
+      const day = parseInt(parts[0]);
+      const monthIndex = months.indexOf(parts[1]);
+      if (monthIndex !== -1) {
+        const year = new Date().getFullYear();
+        const dueDate = new Date(year, monthIndex, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return dueDate < today;
+      }
+    }
+    return false;
+  };
+
+  // Get overdue class based on priority
+  const getOverdueClass = (task) => {
+    if (!isOverdue(task.dueDate) || task.completed) return '';
+    if (task.urgency === 'High') return 'task-overdue-high';
+    if (task.urgency === 'Medium') return 'task-overdue-medium';
+    return 'task-overdue-low';
+  };
+
+  // Parse date for sorting
+  const parseDate = (dueDateStr) => {
+    if (!dueDateStr || dueDateStr === 'Not specified') return new Date(9999, 11, 31); // Far future
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const parts = dueDateStr.split('-');
+    if (parts.length === 2) {
+      const day = parseInt(parts[0]);
+      const monthIndex = months.indexOf(parts[1]);
+      if (monthIndex !== -1) {
+        const year = new Date().getFullYear();
+        return new Date(year, monthIndex, day);
+      }
+    }
+    return new Date(9999, 11, 31);
+  };
+
+  // Derived state - filtered and sorted tasks
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
+    let filtered = tasks.filter(task => {
       // Show/hide completed
       if (!showCompleted && task.completed) return false;
-
       // Search
       if (search && !task.description.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
 
-      // Filter
-      if (filter === 'All') return true;
-      if (filter === 'Urgent') return task.urgency === 'High';
-      return task.category === filter;
-    }) // Sort by created/urgent? Defaulting to "Newest First" (based on array unshift in store logic)
-      .sort((a, b) => {
-        // High urgency on top?
-        if (a.urgency === 'High' && b.urgency !== 'High') return -1;
-        if (a.urgency !== 'High' && b.urgency === 'High') return 1;
-        return 0; // Keep order otherwise
+    // Sort based on sortBy
+    if (sortBy === 'priority') {
+      // High -> Medium -> Low
+      const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+      filtered.sort((a, b) => {
+        return priorityOrder[a.urgency] - priorityOrder[b.urgency];
       });
-  }, [tasks, search, filter, showCompleted]);
+    } else if (sortBy === 'date') {
+      // Sort by date: overdue/closest first
+      filtered.sort((a, b) => {
+        const dateA = parseDate(a.dueDate);
+        const dateB = parseDate(b.dueDate);
+        return dateA - dateB;
+      });
+    }
 
-  // Group tasks by category
+    return filtered;
+  }, [tasks, search, sortBy, showCompleted]);
+
+  // Group tasks by category after sorting
   const tasksByCategory = useMemo(() => {
     const grouped = { Work: [], Home: [] };
     filteredTasks.forEach(task => {
@@ -91,6 +145,34 @@ function App() {
   const openTaskCount = useMemo(() => {
     return tasks.filter(t => !t.completed).length;
   }, [tasks]);
+
+  // Task selection handlers
+  const toggleTaskSelection = (taskId) => {
+    const newSelected = new Set(selectedTasks);
+    if (newSelected.has(taskId)) {
+      newSelected.delete(taskId);
+    } else {
+      newSelected.add(taskId);
+    }
+    setSelectedTasks(newSelected);
+  };
+
+  const copySelectedTasks = () => {
+    const selectedTasksList = tasks.filter(t => selectedTasks.has(t.id));
+    if (selectedTasksList.length === 0) return;
+
+    // Format as tab-separated table
+    let copyText = 'Task\tDue Date\tPriority\n';
+    selectedTasksList.forEach(task => {
+      const priority = getPriorityLetter(task.urgency);
+      copyText += `${task.description}\t${task.dueDate}\t${priority}\n`;
+    });
+
+    navigator.clipboard.writeText(copyText).then(() => {
+      alert(`Copied ${selectedTasksList.length} task(s) to clipboard!`);
+      setSelectedTasks(new Set()); // Clear selection after copy
+    });
+  };
 
   // Helper to get priority letter
   const getPriorityLetter = (urgency) => {
@@ -160,7 +242,6 @@ function App() {
     const extracted = parseTasks(transcript);
     addTask(extracted);
     setTranscript('');
-    setFilter('All'); // Reset view to see new tasks
   };
 
   return (
@@ -191,11 +272,49 @@ function App() {
 
       <FilterBar
         onSearchChange={setSearch}
-        onFilterChange={setFilter}
-        activeFilter={filter}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
         showCompleted={showCompleted}
         onToggleCompleted={() => setShowCompleted(!showCompleted)}
       />
+
+      {/* Copy Selected Button */}
+      {selectedTasks.size > 0 && (
+        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button
+            onClick={copySelectedTasks}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              background: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            📋 Copy {selectedTasks.size} Selected
+          </button>
+          <button
+            onClick={() => setSelectedTasks(new Set())}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '12px',
+              background: '#f3f4f6',
+              color: '#666',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       <div className="task-list">
         {filteredTasks.length === 0 && (
@@ -219,7 +338,7 @@ function App() {
               onToggle={() => toggleSection(category)}
             >
               {categoryTasks.map(task => (
-                <div key={task.id} className="card animate-enter" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: editingId === task.id ? '12px' : '10px' }}>
+                <div key={task.id} className={`card animate-enter ${getOverdueClass(task)}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: editingId === task.id ? '12px' : '10px' }}>
                   {editingId === task.id ? (
                     // EDIT MODE
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
@@ -316,8 +435,36 @@ function App() {
                   ) : (
                     // READ MODE
                     <>
+                      {/* Selection Checkbox */}
                       <div
-                        onClick={() => toggleComplete(task.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTaskSelection(task.id);
+                        }}
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '4px',
+                          border: `2px solid ${selectedTasks.has(task.id) ? 'var(--color-primary)' : '#ddd'}`,
+                          background: selectedTasks.has(task.id) ? 'var(--color-primary)' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          marginTop: '2px',
+                          flexShrink: 0,
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {selectedTasks.has(task.id) && <span style={{ color: 'white', fontSize: '0.7rem' }}>✓</span>}
+                      </div>
+
+                      {/* Complete Checkbox */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleComplete(task.id);
+                        }}
                         style={{
                           width: '22px',
                           height: '22px',
@@ -336,7 +483,12 @@ function App() {
                         {task.completed && <span style={{ color: 'white', fontSize: '0.7rem' }}>✓</span>}
                       </div>
 
-                      <div style={{ flex: 1, opacity: task.completed ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                      {/* Task Content - Clickable */}
+                      <div
+                        className="task-content"
+                        onClick={() => startEditing(task)}
+                        style={{ flex: 1, opacity: task.completed ? 0.5 : 1, transition: 'opacity 0.2s' }}
+                      >
                         <div style={{
                           fontSize: '0.95rem',
                           fontWeight: '600',
@@ -365,16 +517,13 @@ function App() {
                         </div>
                       </div>
 
+                      {/* Delete Button */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <button
-                          onClick={() => startEditing(task)}
-                          style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', opacity: 0.5, padding: '4px', minWidth: '32px', minHeight: '32px' }}
-                          title="Edit"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => removeTask(task.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTask(task.id);
+                          }}
                           style={{ background: 'none', border: 'none', fontSize: '1.1rem', cursor: 'pointer', opacity: 0.3, padding: '4px', minWidth: '32px', minHeight: '32px' }}
                           title="Delete"
                         >

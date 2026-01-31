@@ -1,8 +1,10 @@
 import { useState } from 'react';
 
-export default function FilterBar({ onFilterChange, onSearchChange, activeFilter, showCompleted, onToggleCompleted }) {
-    // Filters: All, Work, Home, High Priority
-    const filters = ['All', 'Work', 'Home', 'Urgent'];
+export default function FilterBar({ onSearchChange, sortBy, onSortChange, showCompleted, onToggleCompleted }) {
+    const sortOptions = [
+        { value: 'priority', label: '🎯 Priority' },
+        { value: 'date', label: '📅 Date' }
+    ];
 
     return (
         <div style={{ marginBottom: '20px' }}>
@@ -23,11 +25,12 @@ export default function FilterBar({ onFilterChange, onSearchChange, activeFilter
                 }}
             />
 
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', flexWrap: 'wrap' }}>
-                {filters.map(filter => (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Sort:</span>
+                {sortOptions.map(option => (
                     <button
-                        key={filter}
-                        onClick={() => onFilterChange(filter)}
+                        key={option.value}
+                        onClick={() => onSortChange(option.value)}
                         style={{
                             padding: '6px 14px',
                             borderRadius: '20px',
@@ -35,15 +38,15 @@ export default function FilterBar({ onFilterChange, onSearchChange, activeFilter
                             fontSize: '0.9rem',
                             fontWeight: 600,
                             cursor: 'pointer',
-                            background: activeFilter === filter ? 'var(--color-primary)' : 'var(--color-bg-soft)',
-                            color: activeFilter === filter ? 'white' : 'var(--color-text-muted)',
+                            background: sortBy === option.value ? 'var(--color-primary)' : 'var(--color-bg-soft)',
+                            color: sortBy === option.value ? 'white' : 'var(--color-text-muted)',
                             whiteSpace: 'nowrap',
                             transition: 'all 0.2s',
                             minHeight: '32px',
                             minWidth: 'auto'
                         }}
                     >
-                        {filter}
+                        {option.label}
                     </button>
                 ))}
 
@@ -55,7 +58,7 @@ export default function FilterBar({ onFilterChange, onSearchChange, activeFilter
                         minWidth: 'auto'
                     }}
                 >
-                    {showCompleted ? '✓ Completed' : 'Show Done'}
+                    {showCompleted ? '✓ Done' : 'Show Done'}
                 </button>
             </div>
         </div>

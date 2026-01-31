@@ -41,8 +41,8 @@ body {
 
 /* Utilities */
 .container {
-  max-width: 390px;
-  /* iPhone 13 width */
+  max-width: 360px;
+  /* Optimized for compact mobile view */
   margin: 0 auto;
   padding: 16px;
   min-height: 100vh;
@@ -81,6 +81,33 @@ body {
   padding: 10px;
   margin-bottom: 8px;
   border: 1px solid rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* Task Content - Clickable */
+.task-content {
+  cursor: pointer;
+}
+
+/* Overdue Task Highlighting */
+.task-overdue-high {
+  border-left: 4px solid #dc2626;
+  background: #fef2f2;
+}
+
+.task-overdue-medium {
+  border-left: 4px solid #ea580c;
+  background: #fff7ed;
+}
+
+.task-overdue-low {
+  border-left: 4px solid #6b7280;
+  background: #f9fafb;
 }
 
 /* Animations */
