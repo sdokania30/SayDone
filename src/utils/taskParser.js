@@ -13,19 +13,29 @@ const CATEGORIES = {
 
 // Priority keyword dictionaries
 const PRIORITY_KEYWORDS = {
-    URGENT: ['urgent', 'asap', 'immediately', 'critical', 'high priority'],
-    HIGH: ['important', 'must do'],
-    LOW: ['whenever', 'low priority', 'maybe']
+    URGENT: ['urgent', 'asap', 'immediately', 'critical', 'high priority', 'must do', 'critical issue'],
+    HIGH: ['important', 'tonight', 'today', 'urgent', 'before it\'s', 'overdue', 'deadline', 'by end of day', 'eod'],
+    LOW: ['whenever', 'low priority', 'maybe', 'sometime', 'eventually']
 };
 
-// Category keyword dictionaries
+// Category keyword dictionaries - expanded based on examples
 const CATEGORY_KEYWORDS = {
     WORK: ['email', 'meeting', 'call', 'presentation', 'boss', 'client', 'code',
         'budget', 'slide', 'project', 'deadline', 'report', 'office', 'business',
-        'interview', 'hire', 'deploy', 'patch', 'bug'],
-    HOME: ['mom', 'dad', 'gym', 'groceries', 'kids', 'dinner', 'party', 'doctor',
+        'interview', 'hire', 'deploy', 'patch', 'bug', 'production', 'expense', 'agenda',
+        'slides', 'client meeting', 'work', 'conference', 'presentation'],
+    HOME: ['mom', 'dad', 'mother', 'father', 'gym', 'groceries', 'kids', 'dinner', 'party', 'doctor',
         'family', 'wife', 'husband', 'son', 'daughter', 'parent', 'brother', 'sister',
-        'laundry', 'clean', 'cook', 'bank', 'bill', 'medicine', 'workout', 'trip']
+        'laundry', 'clean', 'cook', 'bank', 'bill', 'medicine', 'workout', 'trip', 'vacation',
+        'home', 'house', 'driving license', 'credit card', 'blood pressure', 'appointment',
+        'mom', 'airport', 'cab', 'electricity', 'workspace', 'resume']
+};
+
+// Word expansions for better parsing
+const WORD_EXPANSIONS = {
+    'mom': 'mother',
+    'dad': 'father',
+    'tmw': 'tomorrow'
 };
 
 // Filler words/phrases to remove during normalization
@@ -64,10 +74,16 @@ const formatDate = (date) => {
 
 /**
  * STEP 1: Normalization
- * Convert to lowercase, remove extra spaces, standardize filler words
+ * Convert to lowercase, remove extra spaces, standardize filler words, expand shortcuts
  */
 const normalize = (text) => {
     let normalized = text.trim();
+
+    // Expand common shortcuts/words
+    Object.entries(WORD_EXPANSIONS).forEach(([shortForm, expanded]) => {
+        const regex = new RegExp(`\\b${shortForm}\\b`, 'gi');
+        normalized = normalized.replace(regex, expanded);
+    });
 
     // Remove filler phrases (case insensitive)
     FILLER_PHRASES.forEach(phrase => {
@@ -188,13 +204,16 @@ const extractDate = (text) => {
     let date = null;
     let cleaned = text;
 
-    // 1. Shortcut: "EOD" -> Today
+    // 1. Time-of-day qualifiers (extract for urgency, not for date calculation)
+    const hasUrgentTiming = /\b(tonight|this morning|by end of day|end of day|eod|today|asap)\b/i.test(lowerText);
+
+    // 2. Shortcut: "EOD" -> Today
     if (/\beod\b/i.test(lowerText)) {
         date = new Date(now);
         cleaned = cleaned.replace(/\beod\b/gi, '');
     }
 
-    // 2. Relative: "in next X days" (e.g., "in next 2 days")
+    // 3. Relative: "in next X days" (e.g., "in next 2 days")
     else if (/in next (\d+) days?/i.test(lowerText)) {
         const match = lowerText.match(/in next (\d+) days?/i);
         const days = parseInt(match[1]);
@@ -203,18 +222,53 @@ const extractDate = (text) => {
         cleaned = cleaned.replace(/in next \d+ days?/gi, '');
     }
 
-    // 3. Relative Days: today, tomorrow, tonight, tmw
+    // 4. Weekend reference
+    else if (/\b(this\s+)?(weekend)\b/i.test(lowerText)) {
+        date = new Date(now);
+        const currentDay = now.getDay();
+        let daysToAdd = 6 - currentDay; // Saturday
+        if (currentDay === 0 || currentDay === 6) daysToAdd = 2; // If already on weekend, add 2 days
+        if (daysToAdd <= 0) daysToAdd += 7;
+        date.setDate(now.getDate() + daysToAdd);
+        cleaned = cleaned.replace(/\b(this\s+)?(weekend)\b/gi, '');
+    }
+
+    // 5. This month reference
+    else if (/\b(this\s+)?month|sometime\s+this\s+month\b/i.test(lowerText)) {
+        date = new Date(now);
+        const mid = 15; // Mid-month default
+        date.setDate(mid);
+        if (date < now) {
+            date.setDate(Math.min(28, now.getDate() + 5)); // Avoid end of month
+        }
+        cleaned = cleaned.replace(/\b(this\s+)?month|sometime\s+this\s+month\b/gi, '');
+    }
+
+    // 6. Next week reference
+    else if (/\b(next\s+week)\b/i.test(lowerText)) {
+        date = new Date(now);
+        date.setDate(now.getDate() + 7);
+        cleaned = cleaned.replace(/\b(next\s+week)\b/gi, '');
+    }
+
+    // 7. Summer/seasonal reference - set to mid-June as placeholder
+    else if (/\b(summer\s+)?(holiday|vacation|travel)\b/i.test(lowerText)) {
+        date = null; // Will stay as null, converted to "Not specified"
+        cleaned = cleaned.replace(/\b(summer\s+)?(holiday|vacation|travel)\b/gi, '');
+    }
+
+    // 8. Relative Days: today, tomorrow, tonight
     else if (/\b(today|tonight)\b/i.test(lowerText)) {
         date = new Date(now);
         cleaned = cleaned.replace(/\b(today|tonight)\b/gi, '');
     }
-    else if (/\b(tomorrow|tmw)\b/i.test(lowerText)) {
+    else if (/\b(tomorrow)\b/i.test(lowerText)) {
         date = new Date(now);
         date.setDate(date.getDate() + 1);
-        cleaned = cleaned.replace(/\b(tomorrow|tmw)\b/gi, '');
+        cleaned = cleaned.replace(/\b(tomorrow)\b/gi, '');
     }
 
-    // 4. Weekdays: "on monday", "next tuesday", "by friday"
+    // 9. Weekdays: "on monday", "next tuesday", "by friday"
     else if (/\b(on|next|by)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(lowerText)) {
         const match = lowerText.match(/\b(on|next|by)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
         const dayName = match[2].toLowerCase();
@@ -234,7 +288,7 @@ const extractDate = (text) => {
         cleaned = cleaned.replace(/\b(on|next|by)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '');
     }
 
-    // 5. Explicit Date: "3rd Jan", "Jan 15", "15 Feb", "15th February"
+    // 10. Explicit Date: "3rd Jan", "Jan 15", "15 Feb", "15th February"
     else if (/\b(\d{1,2})(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(lowerText)) {
         const match = lowerText.match(/\b(\d{1,2})(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i);
         const day = parseInt(match[1]);
@@ -276,10 +330,8 @@ const extractDate = (text) => {
         cleaned = cleaned.replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}(st|nd|rd|th)?\b/gi, '');
     }
 
-    // 6. Default: If no date found, set to today's date
-    if (!date) {
-        date = new Date(now);
-    }
+    // 11. If date is null (not found in text), leave it null for "Not specified"
+    // Otherwise return the found date
 
     return { date, cleaned: cleaned.replace(/\s+/g, ' ').trim() };
 };
@@ -292,10 +344,13 @@ const finalClean = (text) => {
     let cleaned = text;
 
     // Remove common prepositions/conjunctions that might be left over
-    cleaned = cleaned.replace(/\b(by|on|at|in|for|the|a|an)\b/gi, '');
+    cleaned = cleaned.replace(/\b(by|on|at|in|for|the|a|an|to|of|and|or)\b/gi, '');
 
-    // Remove time-of-day references
-    cleaned = cleaned.replace(/\b(morning|afternoon|evening|night)\b/gi, '');
+    // Remove time-of-day references and timing words
+    cleaned = cleaned.replace(/\b(morning|afternoon|evening|night|today|tonight|tomorrow|this|next|this\s+week|next\s+week|weekend)\b/gi, '');
+
+    // Remove duration references that weren't caught
+    cleaned = cleaned.replace(/\b(before\s+it'?s|sometime|eventually)\b/gi, '');
 
     // Collapse spaces and trim
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
@@ -315,8 +370,10 @@ const finalClean = (text) => {
  * Process a single task segment through the extraction pipeline
  */
 const processSegment = (segment) => {
+    const lowerSegment = segment.toLowerCase();
+
     // Extract metadata in order
-    const { priority, cleaned: afterPriority } = extractPriority(segment);
+    let { priority, cleaned: afterPriority } = extractPriority(segment);
     const { category, cleaned: afterCategory } = extractCategory(afterPriority);
     const { date, cleaned: afterDate } = extractDate(afterCategory);
 
@@ -326,9 +383,16 @@ const processSegment = (segment) => {
     // Fallback to original if description is too short
     const finalDescription = description.length < 3 ? segment : description;
 
+    // Boost urgency if timing keywords present
+    if (priority === 'Medium') {
+        if (/\b(tonight|end of day|eod|today|urgent|asap)\b/i.test(lowerSegment)) {
+            priority = 'High';
+        }
+    }
+
     return {
         description: finalDescription,
-        dueDate: formatDate(date),
+        dueDate: date ? formatDate(date) : 'Not specified',
         category: category,
         urgency: priority,
         completed: false,
